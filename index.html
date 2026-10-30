@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>墨屿 · AI 工作台</title>
+  <meta name="description" content="墨屿 AI 工作台：搜索、对话、提示词与灵感工具，收进一张安静的书桌。支持自定义背景、主题与本地数据存储。">
+  <meta name="theme-color" content="#f7f7f4">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="墨屿 · AI 工作台">
+  <meta property="og:description" content="搜索、对话、提示词与灵感工具，收进一张安静的书桌。支持自定义背景、主题与本地数据存储。">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<script>
+  try {
+    const saved = localStorage.getItem('mori.theme');
+    const theme = ['minimal', 'paper', 'dark'].includes(JSON.parse(saved || '"minimal"')) ? JSON.parse(saved) : 'minimal';
+    document.body.dataset.theme = theme;
+    const tint = { minimal: '#f7f7f4', paper: '#f4f0e7', dark: '#19191b' }[theme] || '#f7f7f4';
+    document.documentElement.style.background = tint;
+  } catch (e) {
+    document.body.dataset.theme = 'minimal';
+  }
+</script>
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+<noscript><div class="noscript-note">墨屿需要 JavaScript 才能运行对话与搜索功能，请在浏览器设置中启用 JavaScript。</div></noscript>
+
+<!-- 背景图层 -->
+<div class="bg-layer" id="bg-layer" aria-hidden="true">
+  <div class="bg-image" id="bg-image"></div>
+  <div class="bg-veil" id="bg-veil"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- 图标库 -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 9 9 0 0 1-3.8-.8L3 21l1.8-5a8.1 8.1 0 0 1-1.3-4.5A8.4 8.4 0 0 1 12 3.2a8.4 8.4 0 0 1 9 8.3Z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/><path d="M18.5 15.5 19.4 18l2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9.9-2.5Z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5Z"/><path d="M8 7h8M8 11h6"/></symbol>
+    <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 0 0 5.8 5.8L13 19.6a2.5 2.5 0 0 1-3.6 0l-1.4-1.4a2.5 2.5 0 0 1 0-3.6l7.5-7.5 1.6 1.6"/><path d="m5 5 4.5 4.5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m3.5 17.5 4.7-4.7a2 2 0 0 1 2.8 0l3.2 3.2"/><path d="m13.2 15.2 1.7-1.7a2 2 0 0 1 2.8 0l2.8 2.8"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.5 15a1.7 1.7 0 0 0-1.56-1H2.9a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.5 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.9 4.5h.09a1.7 1.7 0 0 0 1-1.56V2.9a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9v.09a1.7 1.7 0 0 0 1.56 1h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.01Z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="m6 7 .8 12.1A1.9 1.9 0 0 0 8.7 21h6.6a1.9 1.9 0 0 0 1.9-1.9L18 7"/><path d="M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5"/><path d="M21 3 14.5 21l-4-8-8-4L21 3Z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13.2A8.8 8.8 0 0 1 10.8 3 8.8 8.8 0 1 0 21 13.2Z"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M19.4 12a7.5 7.5 0 1 0-2 5.2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></symbol>
+    <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.2 3.8a5.5 5.5 0 0 0-7.8 0L4 12.2V20h7.8l8.4-8.4a5.5 5.5 0 0 0 0-7.8Z"/><path d="M16 8 7 17M15 5l4 4M4 20l4-4"/></symbol>
+    <symbol id="i-translate" viewBox="0 0 24 24"><path d="M3 6h10M8 4v2M5.5 6c.6 3.3 2.6 6 5.5 8M11 6c-.6 3.3-2.6 6-5.5 8"/><path d="m13 20 4-10 4 10M14.5 16.5h5"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9Z"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M8 8H6a3 3 0 1 1 3-3v14a3 3 0 1 1-3-3h12a3 3 0 1 1-3 3V5a3 3 0 1 1 3 3H6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7L11.5 6.3"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1.3-1.3"/></symbol>
+    <symbol id="i-trash2" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="m6 7 .8 12.1A1.9 1.9 0 0 0 8.7 21h6.6a1.9 1.9 0 0 0 1.9-1.9L18 7"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-2.7 3.5M6.4 6.9A17 17 0 0 0 2.5 12S6 18 12 18a9.7 9.7 0 0 0 3.3-.6"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ===== 侧边栏 ===== -->
+  <aside class="sidebar">
+    <a class="brand" href="#home" data-view="home" aria-label="墨屿 AI 工作台首页">
+      <span class="brand-mark" aria-hidden="true">墨</span>
+      <span class="brand-text">
+        <strong>墨屿</strong>
+        <small>MORI · AI WORKBENCH</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="主导航">
+      <button class="nav-item active" type="button" data-view="home">
+        <svg><use href="#i-grid"></use></svg><span>总览</span>
+      </button>
+      <button class="nav-item" type="button" data-view="chat">
+        <svg><use href="#i-chat"></use></svg><span>对话</span><em class="nav-count" id="nav-chat-count">0</em>
+      </button>
+      <button class="nav-item" type="button" data-view="prompts">
+        <svg><use href="#i-book"></use></svg><span>提示词</span><em class="nav-count" id="nav-prompt-count">0</em>
+      </button>
+      <button class="nav-item" type="button" data-view="tools">
+        <svg><use href="#i-tools"></use></svg><span>工具箱</span>
+      </button>
+      <button class="nav-item" type="button" data-view="background">
+        <svg><use href="#i-image"></use></svg><span>背景</span>
+      </button>
+      <button class="nav-item" type="button" data-view="settings">
+        <svg><use href="#i-settings"></use></svg><span>设置</span>
+      </button>
+    </nav>
+
+    <div class="side-sep"></div>
+
+    <div class="side-block">
+      <div class="side-label">当前背景</div>
+      <button class="side-bg" type="button" data-view="background">
+        <span class="side-bg-thumb" id="side-bg-thumb"></span>
+        <span class="side-bg-meta">
+          <strong id="side-bg-name">默认素白</strong>
+          <small>点击更换</small>
+        </span>
+        <svg class="side-bg-arrow"><use href="#i-arrow-up-right"></use></svg>
+      </button>
+    </div>
+
+    <div class="side-quote">
+      <span class="quote-mark" aria-hidden="true">“</span>
+      <p>超以象外，<br>得其环中。</p>
+      <small>—— 司空图《诗品》</small>
+    </div>
+
+    <div class="side-bottom">
+      <div class="side-label">皮肤 / 主题</div>
+      <div class="theme-dots" role="group" aria-label="切换主题">
+        <button class="theme-dot td-minimal active" type="button" data-theme="minimal" title="素白" aria-label="素白主题"></button>
+        <button class="theme-dot td-paper" type="button" data-theme="paper" title="宣纸" aria-label="宣纸主题"></button>
+        <button class="theme-dot td-dark" type="button" data-theme="dark" title="墨夜" aria-label="墨夜主题"></button>
+      </div>
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>本地存储 · 对话直连模型<br>
+        <span class="side-ver">v1.0 · <span id="side-date">—</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== 主区域 ===== -->
+  <main class="main" id="main">
+
+    <!-- ====== 总览 ====== -->
+    <section class="view" id="view-home">
+      <header class="page-head">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>MORI STUDIO<span class="kicker-date" id="today-label">—</span></div>
+          <h1 class="page-title">AI 工作台</h1>
+          <p class="page-sub" id="greeting">早安，把问题交给模型，把判断留给自己。</p>
+        </div>
+        <div class="page-actions">
+          <button class="icon-btn cmd-trigger" type="button" title="命令面板（⌘K）" aria-label="打开命令面板">
+            <svg><use href="#i-command"></use></svg><span>⌘K</span>
+          </button>
+          <button class="icon-btn" type="button" data-view="background" title="更换背景" aria-label="更换背景">
+            <svg><use href="#i-image"></use></svg>
+          </button>
+          <button class="icon-btn theme-toggle" id="theme-toggle" type="button" title="切换明暗" aria-label="切换明暗主题">
+            <svg class="icon-sun"><use href="#i-sun"></use></svg>
+            <svg class="icon-moon"><use href="#i-moon"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-art" aria-hidden="true">
+          <span class="ring ring-1"></span>
+          <span class="ring ring-2"></span>
+          <span class="ring ring-3"></span>
+          <span class="art-dot dot-a"></span>
+          <span class="art-dot dot-b"></span>
+          <span class="art-glyph">问</span>
+        </div>
+
+        <div class="hero-copy">
+          <div class="hero-eyebrow"><span class="live-dot"></span>与智能共处的一天</div>
+          <h2 class="hero-title" id="hero-title">静水流深，<br><em>智汇成章</em>。</h2>
+          <p class="hero-lede">搜索世界，追问灵感，整理思绪。把所有入口，收进同一张安静的书桌。</p>
+
+          <form class="search" id="search-form" role="search" novalidate>
+            <div class="engine" id="engine">
+              <button class="engine-btn" type="button" id="engine-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="选择搜索引擎">
+                <span class="engine-icon" id="engine-icon">B</span>
+                <span class="engine-name" id="engine-name">必应</span>
+                <svg class="engine-caret"><use href="#i-chevron-down"></use></svg>
+              </button>
+              <div class="engine-menu" id="engine-menu" role="listbox" aria-label="搜索引擎列表" hidden></div>
+            </div>
+            <input id="search-input" class="search-input" type="search" placeholder="搜索世界，或向 AI 提问…" autocomplete="off" spellcheck="false" aria-label="搜索关键词">
+            <button class="ai-ask" type="button" id="ask-ai-btn" title="把问题交给 AI" aria-label="把问题交给 AI">
+              <svg><use href="#i-sparkles"></use></svg>
+            </button>
+            <button class="search-btn" type="submit">
+              <svg><use href="#i-search"></use></svg><span>搜索</span>
+            </button>
+          </form>
+
+          <div class="search-meta">
+            <div class="hot-list" id="hot-list">
+              <span class="meta-label">灵感</span>
+              <button class="hot-chip" type="button" data-query="AI Agent">AI Agent</button>
+              <button class="hot-chip" type="button" data-query="提示词工程">提示词工程</button>
+              <button class="hot-chip" type="button" data-query="2026 设计趋势">2026 设计趋势</button>
+              <button class="hot-chip" type="button" data-query="独立开发者">独立开发者</button>
+            </div>
+            <span class="search-tip"><kbd>Enter</kbd> 搜索 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 问 AI</span>
+          </div>
+
+          <div class="search-history" id="search-history" hidden>
+            <span class="meta-label">最近</span>
+            <div class="history-chips" id="history-chips"></div>
+            <button class="history-clear" type="button" id="history-clear">清除</button>
+          </div>
+        </div>
+
+        <aside class="desk" aria-label="今日书桌">
+          <div class="desk-top">
+            <span>今日书桌</span>
+            <span class="desk-status"><span class="live-dot"></span>就绪</span>
+          </div>
+          <div class="desk-date" id="desk-date">—</div>
+          <blockquote class="desk-quote" id="desk-quote">“让每一次提问，都更接近答案。”</blockquote>
+          <div class="desk-stats">
+            <div class="desk-stat"><strong id="stat-chats">0</strong><span>今日对话</span></div>
+            <div class="desk-stat"><strong id="stat-prompts">0</strong><span>提示词</span></div>
+            <div class="desk-stat"><strong id="stat-bg">素白</strong><span>背景</span></div>
+          </div>
+          <div class="desk-actions">
+            <button class="btn btn-primary" type="button" data-new-chat>
+              <svg><use href="#i-plus"></use></svg>新对话
+            </button>
+            <button class="btn btn-ghost" type="button" id="desk-shuffle" title="换一句灵感">
+              <svg><use href="#i-refresh"></use></svg>灵感
+            </button>
+          </div>
+          <div class="desk-foot">模型通道<span id="desk-model">公益体验</span></div>
+        </aside>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <div class="section-title"><span class="dot"></span>智能入口<small>ENTRY</small></div>
+          <span class="section-hint">选择一种方式，开始思考</span>
+        </div>
+        <div class="entry-grid">
+          <button class="entry-card accent-q1" type="button" data-entry="chat">
+            <span class="entry-top"><span class="entry-icon"><svg><use href="#i-message"></use></svg></span><span class="entry-en">CHAT</span></span>
+            <strong>深度对话</strong>
+            <span class="entry-desc">把模糊的问题，聊成清晰的答案。</span>
+            <span class="entry-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+          </button>
+          <button class="entry-card accent-q2" type="button" data-entry="write">
+            <span class="entry-top"><span class="entry-icon"><svg><use href="#i-feather"></use></svg></span><span class="entry-en">WRITE</span></span>
+            <strong>灵感写作</strong>
+            <span class="entry-desc">从一句开场，到一篇成形。</span>
+            <span class="entry-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+          </button>
+          <button class="entry-card accent-q3" type="button" data-entry="translate">
+            <span class="entry-top"><span class="entry-icon"><svg><use href="#i-translate"></use></svg></span><span class="entry-en">TRANSLATE</span></span>
+            <strong>精准翻译</strong>
+            <span class="entry-desc">保留语气与语境，而不只是词义。</span>
+            <span class="entry-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+          </button>
+          <button class="entry-card accent-q4" type="button" data-entry="code">
+            <span class="entry-top"><span class="entry-icon"><svg><use href="#i-code"></use></svg></span><span class="entry-en">CODE</span></span>
+            <strong>代码助手</strong>
+            <span class="entry-desc">读懂报错，也读懂你的意图。</span>
+            <span class="entry-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <div class="home-split">
+        <section class="section">
+          <div class="section-head">
+            <div class="section-title"><span class="dot dot-2"></span>提示词精选<small>PROMPTS</small></div>
+            <button class="text-link" type="button" data-view="prompts">全部提示词<svg><use href="#i-arrow-right"></use></svg></button>
+          </div>
+          <div class="prompt-grid" id="home-prompts"></div>
+        </section>
+
+        <aside class="section">
+          <div class="section-head">
+            <div class="section-title"><span class="dot dot-3"></span>最近对话<small>RECENT</small></div>
+            <button class="text-link" type="button" data-new-chat>新建<svg><use href="#i-plus"></use></svg></button>
+          </div>
+          <div class="panel recent-panel" id="recent-list"></div>
+          <div class="mini-tip">
+            <svg><use href="#i-sparkles"></use></svg>
+            <p>没有灵感？<button class="text-link" type="button" id="surprise-btn">随机提一个</button></p>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="main-footer">
+        <span>墨屿 · 让思绪有处安放</span>
+        <span>对话直连模型 · 记录留在本机</span>
+      </footer>
+    </section>
+
+    <!-- ====== 对话 ====== -->
+    <section class="view hidden" id="view-chat">
+      <header class="page-head page-head-sm">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>CONVERSATION</div>
+          <h1 class="page-title">对话</h1>
+          <p class="page-sub">与模型一起，把模糊的想法慢慢说清楚。</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" type="button" data-view="settings">
+            <svg><use href="#i-settings"></use></svg>模型设置
+          </button>
+          <button class="btn btn-primary" type="button" data-new-chat>
+            <svg><use href="#i-plus"></use></svg>新对话
+          </button>
+        </div>
+      </header>
+
+      <div class="chat-shell">
+        <aside class="threads">
+          <div class="threads-head"><span>会话记录</span><span class="threads-count" id="thread-count">0</span></div>
+          <div class="threads-list" id="thread-list"></div>
+          <button class="threads-new" type="button" data-new-chat>
+            <svg><use href="#i-plus"></use></svg>新建对话
+          </button>
+        </aside>
+
+        <section class="chat-panel">
+          <header class="chat-head">
+            <div class="chat-head-main">
+              <span class="model-pill" id="chat-provider-pill"><span class="live-dot"></span><span>公益体验通道</span></span>
+              <span class="chat-model" id="chat-model-name">openai</span>
+            </div>
+            <div class="chat-head-actions">
+              <label class="persona-select">
+                <span>人格</span>
+                <select id="persona-select" aria-label="选择对话人格">
+                  <option value="general">通用助手</option>
+                  <option value="writer">写作编辑</option>
+                  <option value="translator">翻译专家</option>
+                  <option value="coder">代码顾问</option>
+                  <option value="thinker">思考伙伴</option>
+                </select>
+              </label>
+              <button class="icon-btn" type="button" id="chat-clear" title="清空当前对话" aria-label="清空当前对话">
+                <svg><use href="#i-trash"></use></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="messages" id="messages">
+            <div class="chat-empty" id="chat-empty">
+              <div class="empty-mark">墨</div>
+              <h3>从一个问题开始</h3>
+              <p>可以是一次追问、一段待改的文字，或一个还没有答案的念头。</p>
+              <div class="suggestions">
+                <button type="button" class="suggestion" data-suggest="用费曼学习法解释一下什么是 AI Agent，尽量用生活中的类比。">用费曼学习法解释 AI Agent</button>
+                <button type="button" class="suggestion" data-suggest="帮我拟一份周末 48 小时城市漫游计划，节奏慢一点，避开人多的景点。">拟一份周末漫游计划</button>
+                <button type="button" class="suggestion" data-suggest="润色下面这段话，让语气更克制、更适合写在产品发布说明里：我们做了很多很酷的功能，希望大家喜欢。">润色一段产品文案</button>
+                <button type="button" class="suggestion" data-suggest="给我三个可以在一个周末完成的小项目点子，用于练习前端开发，并且能放进作品集。">三个周末项目点子</button>
+              </div>
+              <p class="chat-privacy"><span class="local-dot"></span>对话内容会发送至所选模型服务，历史记录只保存在本机。</p>
+            </div>
+          </div>
+
+          <form class="composer" id="composer">
+            <div class="composer-box">
+              <textarea id="chat-input" rows="1" maxlength="8000" placeholder="写下你的问题，Enter 发送…" aria-label="输入消息"></textarea>
+              <div class="composer-foot">
+                <div class="composer-meta"><span id="composer-hint">Enter 发送 · Shift + Enter 换行</span></div>
+                <div class="composer-actions">
+                  <span class="char-count" id="char-count">0 / 8000</span>
+                  <button class="send-btn" id="send-btn" type="submit" aria-label="发送消息">
+                    <svg class="send-icon"><use href="#i-send"></use></svg>
+                    <svg class="stop-icon"><use href="#i-stop"></use></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <!-- ====== 提示词 ====== -->
+    <section class="view hidden" id="view-prompts">
+      <header class="page-head page-head-sm">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>PROMPT LIBRARY</div>
+          <h1 class="page-title">提示词库</h1>
+          <p class="page-sub">把反复验证过的问法留下来，下次直接出发。</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" type="button" id="add-prompt-btn">
+            <svg><use href="#i-plus"></use></svg>新增提示词
+          </button>
+        </div>
+      </header>
+
+      <div class="library-bar">
+        <div class="filter-chips" id="prompt-filters" role="group" aria-label="提示词分类"></div>
+        <label class="library-search">
+          <svg><use href="#i-search"></use></svg>
+          <input id="prompt-search" type="search" placeholder="搜索提示词…" autocomplete="off" aria-label="搜索提示词">
+        </label>
+      </div>
+
+      <div class="prompt-library" id="prompt-library"></div>
+      <div class="empty-state hidden" id="prompt-empty">
+        <div class="empty-mark small">空</div>
+        <h3>没有找到匹配的提示词</h3>
+        <p>换一个关键词，或把它写下来。</p>
+        <button class="btn btn-ghost" type="button" id="empty-add-prompt">新增提示词</button>
+      </div>
+      <footer class="main-footer"><span id="prompt-footer-count">自定义提示词保存在本机</span><span>提示词是思考的起点，不是终点</span></footer>
+    </section>
+
+    <!-- ====== 工具箱 ====== -->
+    <section class="view hidden" id="view-tools">
+      <header class="page-head page-head-sm">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>UTILITIES</div>
+          <h1 class="page-title">工具箱</h1>
+          <p class="page-sub">几件趁手的小工具，所有计算都在本地完成。</p>
+        </div>
+      </header>
+
+      <div class="tools-grid" id="tools-grid">
+        <button class="tool-card accent-q1" type="button" data-tool="count">
+          <span class="tool-icon"><svg><use href="#i-feather"></use></svg></span>
+          <span class="tool-body"><strong>字数统计</strong><small>中英文字数、行数与阅读时长</small></span>
+          <span class="tool-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+        </button>
+        <button class="tool-card accent-q2" type="button" data-tool="json">
+          <span class="tool-icon"><svg><use href="#i-code"></use></svg></span>
+          <span class="tool-body"><strong>JSON 格式化</strong><small>美化、压缩与错误定位</small></span>
+          <span class="tool-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+        </button>
+        <button class="tool-card accent-q3" type="button" data-tool="base64">
+          <span class="tool-icon"><svg><use href="#i-copy"></use></svg></span>
+          <span class="tool-body"><strong>Base64 编解码</strong><small>支持中文与 Emoji 的 UTF-8 转换</small></span>
+          <span class="tool-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+        </button>
+        <button class="tool-card accent-q4" type="button" data-tool="timestamp">
+          <span class="tool-icon"><svg><use href="#i-clock"></use></svg></span>
+          <span class="tool-body"><strong>时间戳转换</strong><small>秒与毫秒、日期与相对时间</small></span>
+          <span class="tool-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+        </button>
+        <button class="tool-card accent-q1" type="button" data-tool="url">
+          <span class="tool-icon"><svg><use href="#i-link"></use></svg></span>
+          <span class="tool-body"><strong>URL 编解码</strong><small>处理链接中的中文与特殊字符</small></span>
+          <span class="tool-arrow"><svg><use href="#i-arrow-up-right"></use></svg></span>
+        </button>
+        <div class="tool-card tool-card-note">
+          <span class="tool-icon"><svg><use href="#i-info"></use></svg></span>
+          <span class="tool-body"><strong>更多工具，正在打磨</strong><small>想要什么？可以在 GitHub 提一个想法。</small></span>
+        </div>
+      </div>
+
+      <div class="privacy-strip">
+        <svg><use href="#i-info"></use></svg>
+        <p>以上工具均由浏览器本地计算，输入内容不会离开这台设备。</p>
+      </div>
+    </section>
+
+    <!-- ====== 背景 ====== -->
+    <section class="view hidden" id="view-background">
+      <header class="page-head page-head-sm">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>ATMOSPHERE</div>
+          <h1 class="page-title">背景与氛围</h1>
+          <p class="page-sub">上传一张图片，作为整个工作台的底色。图片只保存在本机浏览器。</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" type="button" id="bg-remove">
+            <svg><use href="#i-refresh"></use></svg>恢复默认
+          </button>
+          <button class="btn btn-primary" type="button" id="bg-upload-btn">
+            <svg><use href="#i-upload"></use></svg>上传图片
+          </button>
+        </div>
+      </header>
+
+      <div class="bg-layout">
+        <div class="bg-preview-wrap">
+          <div class="bg-preview" id="bg-preview">
+            <div class="bg-preview-img" id="bg-preview-img"></div>
+            <div class="bg-preview-veil" id="bg-preview-veil"></div>
+            <div class="bg-preview-ui">
+              <span class="bg-preview-badge">实时预览</span>
+              <span class="bg-preview-quote">让背景退后一步，让内容自然浮现。</span>
+            </div>
+          </div>
+          <div class="bg-filemeta">
+            <div>
+              <strong id="bg-active-name">默认素白</strong>
+              <span id="bg-active-meta">未使用背景图片</span>
+            </div>
+            <span class="bg-local-tag"><span class="local-dot"></span>仅本机可见</span>
+          </div>
+        </div>
+
+        <div class="panel bg-controls">
+          <div class="panel-title">显示调节<small>CONTROL</small></div>
+          <label class="range-row">
+            <span class="range-label">遮罩浓度<small>影响文字可读性</small></span>
+            <span class="range-val" id="veil-val">62%</span>
+            <input type="range" id="veil-range" min="10" max="95" step="1" value="62">
+          </label>
+          <label class="range-row">
+            <span class="range-label">柔焦模糊<small>让画面更安静</small></span>
+            <span class="range-val" id="blur-val">0 px</span>
+            <input type="range" id="blur-range" min="0" max="18" step="1" value="0">
+          </label>
+          <label class="select-row">
+            <span class="range-label">对齐方式</span>
+            <select id="bg-position">
+              <option value="center">居中</option>
+              <option value="top">顶部</option>
+              <option value="bottom">底部</option>
+            </select>
+          </label>
+
+          <div class="preset-block">
+            <div class="side-label">静色预设</div>
+            <div class="preset-dots" id="bg-presets" role="group" aria-label="背景预设">
+              <button class="preset-dot p-fog" type="button" data-preset="fog" title="雾蓝"></button>
+              <button class="preset-dot p-moss" type="button" data-preset="moss" title="苔绿"></button>
+              <button class="preset-dot p-sand" type="button" data-preset="sand" title="暖沙"></button>
+              <button class="preset-dot p-dusk" type="button" data-preset="dusk" title="暮紫"></button>
+              <button class="preset-dot p-ink" type="button" data-preset="ink" title="砚墨"></button>
+            </div>
+          </div>
+
+          <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-label="上传背景图片">
+            <span class="upload-icon"><svg><use href="#i-upload"></use></svg></span>
+            <strong>拖入图片，或点击上传</strong>
+            <small>JPG / PNG / WebP / GIF · 单张不超过 20 MB</small>
+          </div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="section-head">
+          <div class="section-title"><span class="dot dot-2"></span>背景图库<small id="gallery-count">0 / 8</small></div>
+          <span class="section-hint">最多保存 8 张，自动压缩后存入浏览器</span>
+        </div>
+        <div class="bg-gallery" id="bg-gallery"></div>
+        <p class="bg-note"><svg><use href="#i-info"></use></svg>背景图使用 IndexedDB 保存在本机，不会上传到服务器。清除浏览器数据后需重新上传。</p>
+      </section>
+    </section>
+
+    <!-- ====== 设置 ====== -->
+    <section class="view hidden" id="view-settings">
+      <header class="page-head page-head-sm">
+        <div class="page-heading">
+          <div class="kicker"><span class="kicker-line"></span>PREFERENCES</div>
+          <h1 class="page-title">设置</h1>
+          <p class="page-sub">选择模型通道，调整偏好，管理只属于你的本地数据。</p>
+        </div>
+      </header>
+
+      <div class="settings-grid">
+        <section class="panel settings-panel wide">
+          <div class="panel-title">模型通道<small>MODEL</small></div>
+          <div class="provider-cards">
+            <button class="provider-card active" type="button" data-provider="public">
+              <span class="provider-top"><span class="provider-name">公益体验通道</span><span class="provider-badge">无需密钥</span></span>
+              <span class="provider-desc">通过 Pollinations 提供的公共接口直接对话，适合快速体验。响应质量与稳定性由服务方决定。</span>
+              <span class="provider-check"><svg><use href="#i-check"></use></svg></span>
+            </button>
+            <button class="provider-card" type="button" data-provider="custom">
+              <span class="provider-top"><span class="provider-name">自定义接口</span><span class="provider-badge">OpenAI 兼容</span></span>
+              <span class="provider-desc">接入你自己的模型服务，密钥只保存在本机 localStorage，不会写入代码或发送到别处。</span>
+              <span class="provider-check"><svg><use href="#i-check"></use></svg></span>
+            </button>
+          </div>
+
+          <div class="form-grid" id="public-fields">
+            <label class="field">
+              <span class="field-label">接口地址</span>
+              <input type="text" value="https://text.pollinations.ai/openai" readonly>
+            </label>
+            <label class="field">
+              <span class="field-label">模型</span>
+              <input type="text" value="openai（由服务方路由）" readonly>
+            </label>
+            <p class="form-note span-2">公共通道可能因服务方限流而变慢或不可用。重要内容建议使用自己的接口。</p>
+          </div>
+
+          <div class="form-grid hidden" id="custom-fields">
+            <label class="field span-2">
+              <span class="field-label">接口地址 <em>需为完整的 chat completions 地址</em></span>
+              <input type="text" id="api-endpoint" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="field">
+              <span class="field-label">API Key</span>
+              <span class="input-with-btn">
+                <input type="password" id="api-key" placeholder="sk-…" autocomplete="off" spellcheck="false">
+                <button type="button" class="field-icon" id="toggle-key" aria-label="显示或隐藏密钥"><svg><use href="#i-eye"></use></svg></button>
+              </span>
+            </label>
+            <label class="field">
+              <span class="field-label">模型名称</span>
+              <input type="text" id="api-model" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="field span-2">
+              <span class="field-label">附加请求头 <em>可选，JSON 格式</em></span>
+              <input type="text" id="api-headers" placeholder='{"X-Custom":"value"}' autocomplete="off" spellcheck="false">
+            </label>
+          </div>
+
+          <div class="field temperature">
+            <span class="field-label">温度 <em>越低越稳定，越高越发散</em><span class="range-val" id="temp-val">0.7</span></span>
+            <input type="range" id="temp-range" min="0" max="1.5" step="0.1" value="0.7" aria-label="模型温度">
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button" id="save-api">保存设置</button>
+            <button class="btn btn-ghost" type="button" id="test-api">测试连接</button>
+            <span class="api-status" id="api-status"></span>
+          </div>
+          <p class="form-note">请求直接从浏览器发往你填写的接口；若遇到跨域（CORS）错误，需要接口方允许来自本站的请求。浏览器端调用会向本页暴露密钥，请使用受限密钥并只在可信设备上使用。本站不对第三方服务可用性作保证。</p>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="panel-title">外观与搜索<small>LOOK &amp; SEARCH</small></div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>主题</strong><span>选择工作台的光线</span></div>
+            <div class="segmented" id="theme-segmented">
+              <button type="button" data-theme="minimal" class="active">素白</button>
+              <button type="button" data-theme="paper">宣纸</button>
+              <button type="button" data-theme="dark">墨夜</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>默认搜索引擎</strong><span>主页搜索时使用</span></div>
+            <select id="settings-engine" class="setting-select" aria-label="默认搜索引擎"></select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy"><strong>动画效果</strong><span>减少动态，专注内容</span></div>
+            <label class="switch">
+              <input type="checkbox" id="reduce-motion" aria-label="减少动画效果">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="panel-title">本地数据<small>LOCAL DATA</small></div>
+          <div class="data-stats">
+            <div><strong id="data-chats">0</strong><span>会话</span></div>
+            <div><strong id="data-prompts">0</strong><span>提示词</span></div>
+            <div><strong id="data-bgs">0</strong><span>背景图</span></div>
+          </div>
+          <div class="data-actions">
+            <button class="btn btn-ghost" type="button" id="export-data"><svg><use href="#i-download"></use></svg>导出数据</button>
+            <button class="btn btn-ghost danger" type="button" id="clear-data"><svg><use href="#i-trash2"></use></svg>清空数据</button>
+          </div>
+          <p class="form-note">导出不包含 API Key 与背景图片原文件。清空操作不可撤销。</p>
+        </section>
+
+        <section class="panel settings-panel about-panel">
+          <div class="panel-title">关于墨屿<small>ABOUT</small></div>
+          <p>墨屿是一个安静的个人 AI 工作台。它没有账号体系，也不追踪你。对话请求直接发往你选择的模型服务，除此之外不经过我们的服务器；搜索、历史记录与背景图都留在本机。</p>
+          <div class="about-meta">
+            <span>版本 v1.0</span>
+            <a href="https://github.com/NEXN0/ai-workbench" target="_blank" rel="noopener noreferrer">GitHub <svg><use href="#i-arrow-up-right"></use></svg></a>
+          </div>
+          <div class="about-quote">“超以象外，得其环中。”</div>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="panel-title">快捷键<small>SHORTCUTS</small></div>
+          <div class="shortcut-list">
+            <div class="shortcut-row"><span>打开命令面板</span><span class="shortcut-keys"><kbd>⌘</kbd><kbd>K</kbd></span></div>
+            <div class="shortcut-row"><span>聚焦主页搜索</span><span class="shortcut-keys"><kbd>/</kbd></span></div>
+            <div class="shortcut-row"><span>发送消息</span><span class="shortcut-keys"><kbd>Enter</kbd></span></div>
+            <div class="shortcut-row"><span>输入换行</span><span class="shortcut-keys"><kbd>Shift</kbd><kbd>Enter</kbd></span></div>
+            <div class="shortcut-row"><span>关闭弹窗或菜单</span><span class="shortcut-keys"><kbd>Esc</kbd></span></div>
+          </div>
+          <p class="form-note">Windows / Linux 请将 ⌘ 换成 Ctrl。</p>
+        </section>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== 通用弹窗 ===== -->
+<div class="modal-root" id="modal-root" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <header class="modal-head">
+      <div>
+        <div class="modal-kicker" id="modal-kicker"></div>
+        <h2 class="modal-title" id="modal-title"></h2>
+      </div>
+      <button class="modal-close" type="button" data-close-modal aria-label="关闭">
+        <svg><use href="#i-close"></use></svg>
+      </button>
+    </header>
+    <div class="modal-body" id="modal-body"></div>
+    <footer class="modal-foot hidden" id="modal-foot"></footer>
+  </div>
+</div>
+
+<!-- ===== 命令面板 ===== -->
+<div class="palette" id="palette" hidden>
+  <div class="palette-backdrop" data-palette-close></div>
+  <div class="palette-panel" role="dialog" aria-modal="true" aria-label="命令面板">
+    <div class="palette-search">
+      <svg><use href="#i-search"></use></svg>
+      <input id="palette-input" type="text" placeholder="输入命令，或直接搜索…" autocomplete="off" spellcheck="false" aria-label="命令或搜索内容">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="palette-list" id="palette-list" role="listbox" aria-label="命令列表"></div>
+    <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 选择</span><span><kbd>↵</kbd> 执行</span><span>支持直接搜索</span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span class="toast-icon"><svg><use href="#i-check"></use></svg></span>
+  <span class="toast-msg" id="toast-msg"></span>
+</div>
+
+<input type="file" id="bg-file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden>
+
+<script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
